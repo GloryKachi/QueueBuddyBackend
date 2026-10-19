@@ -1,0 +1,9 @@
+{
+  "fullName": "Dr. Chidi Eze",
+  "email": "chidi@example.com",
+  "phone": "08051234567",
+  "password": "Passw0rd123",
+  "specialization": "General Practice",
+  "licenseNumber": "MDCN-12345",
+  "clinicCode": "WRONG1"
+}
