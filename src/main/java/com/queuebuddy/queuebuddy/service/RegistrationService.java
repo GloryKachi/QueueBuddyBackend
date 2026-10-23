@@ -68,12 +68,17 @@ public class RegistrationService {
         Clinic clinic = findClinic(r.clinicCode());
         String email = r.email().trim().toLowerCase();
         String phone = normalizePhone(r.phone());
+        String license = r.licenseNumber().trim().toUpperCase();
         checkAvailable(email, phone);
+
+        if (users.existsByLicenseNumber(license)) {
+            throw conflict("LICENSE_TAKEN", "This licence number is already registered.");
+        }
 
         AppUser u = newUser(clinic, r.fullName(), email, phone, r.password(),
                 Role.DOCTOR, AccountStatus.PENDING_APPROVAL);
         u.setSpecialization(r.specialization().trim());
-        u.setLicenseNumber(r.licenseNumber().trim());
+        u.setLicenseNumber(license);
         return UserResponse.from(users.save(u), "Account created. The clinic admin must approve it before you can log in.");
     }
 
