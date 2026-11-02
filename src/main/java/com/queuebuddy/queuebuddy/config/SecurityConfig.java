@@ -35,8 +35,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/auth/**", "/actuator/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/queue/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/me/queue/**").hasRole("PATIENT")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(jwtAuthConverter())));
+
         return http.build();
     }
 
