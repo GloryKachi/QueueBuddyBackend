@@ -4,6 +4,17 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Secrets & local files ###
+.env
+.env.local
+!.env.example
+
+### Postman test bodies ###
+clinic.json
+doctor.json
+patient.json
+verify.json
+
 ### STS ###
 .apt_generated
 .classpath
