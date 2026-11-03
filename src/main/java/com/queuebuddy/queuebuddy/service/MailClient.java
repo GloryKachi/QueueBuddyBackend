@@ -3,59 +3,87 @@ package com.queuebuddy.queuebuddy.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 
 @Component
 public class MailClient {
 
     private static final Logger log = LoggerFactory.getLogger(MailClient.class);
 
-    private final RestClient http;
-    private final String apiKey;
-    private final String from;
+    // Google answers with a redirect, so redirects must be followed.
+    private final HttpClient http = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
-    public MailClient(@Value("${app.mail.api-key:}") String apiKey,
-                      @Value("${app.mail.from-email:onboarding@resend.dev}") String fromEmail,
+    private final String scriptUrl;
+    private final String secret;
+    private final String fromName;
+
+    public MailClient(@Value("${app.mail.script-url:}") String scriptUrl,
+                      @Value("${app.mail.secret:}") String secret,
                       @Value("${app.mail.from-name:QueueBuddy}") String fromName) {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(10));
-        this.http = RestClient.builder()
-                .baseUrl("https://api.resend.com")
-                .requestFactory(factory)
-                .build();
-        this.apiKey = apiKey;
-        this.from = fromName + " <" + fromEmail + ">";
+        this.scriptUrl = scriptUrl;
+        this.secret = secret;
+        this.fromName = fromName;
     }
 
     /** Sends an email. Never throws, so a mail problem can't break sign-up. */
     public void send(String toEmail, String subject, String html) {
-        if (apiKey.isBlank()) {
-            log.info("MAIL (no API key set, not sent) to={} subject={}\n{}", toEmail, subject, html);
+        if (scriptUrl.isBlank() || secret.isBlank()) {
+            log.info("MAIL (mailer not configured, not sent) to={} subject={}\n{}", toEmail, subject, html);
             return;
         }
         try {
-            http.post()
-                    .uri("/emails")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of(
-                            "from", from,
-                            "to", List.of(toEmail),
-                            "subject", subject,
-                            "html", html))
-                    .retrieve()
-                    .toBodilessEntity();
+            String body = "{\"secret\":" + q(secret)
+                    + ",\"to\":" + q(toEmail)
+                    + ",\"subject\":" + q(subject)
+                    + ",\"html\":" + q(html)
+                    + ",\"fromName\":" + q(fromName) + "}";
+
+            HttpRequest request = HttpRequest.newBuilder(URI.create(scriptUrl))
+                    .timeout(Duration.ofSeconds(25))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 300 || !response.body().contains("\"ok\":true")) {
+                log.error("Mailer rejected email to {}: HTTP {} {}", toEmail, response.statusCode(), response.body());
+                log.info("MAIL fallback to={} subject={}\n{}", toEmail, subject, html);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted while sending email to {}", toEmail);
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", toEmail, e.getMessage());
             log.info("MAIL fallback to={} subject={}\n{}", toEmail, subject, html);
         }
+    }
+
+    /** Wraps a string as a JSON string literal. */
+    private static String q(String s) {
+        StringBuilder sb = new StringBuilder("\"");
+        for (char c : s.toCharArray()) {
+            switch (c) {
+                case '"' -> sb.append("\\\"");
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                default -> {
+                    if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+                    else sb.append(c);
+                }
+            }
+        }
+        return sb.append('"').toString();
     }
 }
