@@ -1,10 +1,12 @@
 package com.queuebuddy.queuebuddy.repository;
 
 import com.queuebuddy.queuebuddy.entity.Notification;
+import com.queuebuddy.queuebuddy.entity.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findTop10ByUserIdOrderByCreatedAtDesc(Long userId);
+    boolean existsByQueueEntryIdAndType(Long queueEntryId, NotificationType type);
 }

@@ -1,5 +1,5 @@
 package com.queuebuddy.queuebuddy.dto;
 
-import com.queuebuddy.queuebuddy.entity.NotificationType;
+import java.time.Instant;
 
-public record NotificationItem(Long id, NotificationType type, String message, String createdAt) {}
+public record NotificationItem(Long id, String type, String message, Instant createdAt) {}

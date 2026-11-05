@@ -1,16 +1,12 @@
 package com.queuebuddy.queuebuddy.controller;
 
-import com.queuebuddy.queuebuddy.dto.JoinQueueRequest;
-import com.queuebuddy.queuebuddy.dto.MyQueueResponse;
+import com.queuebuddy.queuebuddy.dto.*;
+import com.queuebuddy.queuebuddy.service.Actor;
 import com.queuebuddy.queuebuddy.service.QueueService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-
-import static com.queuebuddy.queuebuddy.util.JwtClaims.clinicId;
-import static com.queuebuddy.queuebuddy.util.JwtClaims.userId;
 
 @RestController
 @RequestMapping("/api/me/queue")
@@ -20,17 +16,18 @@ public class PatientQueueController {
     private final QueueService queue;
 
     @GetMapping
-    public MyQueueResponse mine(@AuthenticationPrincipal Jwt jwt) {
-        return queue.myQueue(clinicId(jwt), userId(jwt));
+    public MyQueueResponse get(@AuthenticationPrincipal Jwt jwt) {
+        return queue.myQueue(Actor.from(jwt));
     }
 
     @PostMapping("/request")
-    public MyQueueResponse request(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody JoinQueueRequest request) {
-        return queue.requestToJoin(clinicId(jwt), userId(jwt), request.visitType());
+    public MyQueueResponse request(@AuthenticationPrincipal Jwt jwt,
+                                   @RequestBody(required = false) JoinQueueRequest body) {
+        return queue.requestToJoin(Actor.from(jwt), body == null ? null : body.doctorId());
     }
 
     @PostMapping("/cancel")
     public MyQueueResponse cancel(@AuthenticationPrincipal Jwt jwt) {
-        return queue.cancelMine(clinicId(jwt), userId(jwt));
+        return queue.cancelMine(Actor.from(jwt));
     }
 }

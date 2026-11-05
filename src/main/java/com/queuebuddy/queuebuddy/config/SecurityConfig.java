@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/queue/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/me/queue/**").hasRole("PATIENT")
+                        .requestMatchers("/api/doctor/**").hasRole("DOCTOR")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(jwtAuthConverter())));
 

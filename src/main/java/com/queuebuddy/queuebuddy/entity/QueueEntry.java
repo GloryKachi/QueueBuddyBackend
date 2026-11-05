@@ -31,9 +31,13 @@ public class QueueEntry {
 
     private String patientPhone;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private VisitType visitType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "doctor_id")
+    private AppUser doctor;               // doctor the patient is assigned to
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preferred_doctor_id")
+    private AppUser preferredDoctor;      // doctor the patient asked for
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
